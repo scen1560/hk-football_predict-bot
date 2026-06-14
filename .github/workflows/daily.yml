@@ -22,11 +22,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: Download Clean Script
-      # 📡 雲端電腦開工時，直接去網絡下載完全修正好、絕不折行嘅完全體代碼
-      run: |
-        curl -s https://raw.githubusercontent.com/scen1560/my_ball_predict_3034/main/predict.py -o predict.py || echo "Use local file if download fails"
-
     - name: Run prediction script
       run: python predict.py
       env:
