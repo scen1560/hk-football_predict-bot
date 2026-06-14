@@ -20,7 +20,7 @@ def get_international_odds():
         print("❌ 錯誤：找不到 ODDS_API_KEY！請檢查 GitHub 保險箱設定。")
         return None
 
-    # 📡 聯賽搜尋名單 (2026年6月正值世界盃黃金期，優先抓取)
+    # 📡 聯賽搜尋名單
     SPORTS_TO_TRY = [
         'soccer_fifa_world_cup',       # 世界盃
         'soccer_conmebol_copa_america',# 美洲盃
@@ -76,7 +76,7 @@ def get_international_odds():
     return None
 
 # =====================================================================
-# 3. 呼叫 最新 Gemini 3.5 Flash 大腦 (安全拆分網址版，絕不報錯)
+# 3. 呼叫 最新 Gemini 3.5 Flash 大腦 (全新超短固定網址版，100% 杜絕折行錯誤)
 # =====================================================================
 def generate_report_with_gemini(match_info):
     if not match_info:
@@ -88,11 +88,11 @@ def generate_report_with_gemini(match_info):
         print("❌ 錯誤：找不到 GEMINI_API_KEY！")
         return None
 
-    # 🛠️ 拆散長網址，確保每行都極短，絕不引發 GitHub 網頁折行 bug
-    part1 = "https://generativelanguage.googleapis.com"
-    part2 = "/v1beta/models/gemini-3.5-flash:generateContent"
-    url = f"{part1}{part2}?key={GEMINI_API_KEY}"
+    # 🛠️ 絕招：網址保持絕對固定同超短，完全唔放變數入去，咁就絕對唔會斷行！
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
     
+    # 🔒 將金鑰改放在 params 參數入面傳送，安全又乾淨
+    query_params = {"key": GEMINI_API_KEY}
     headers = {"Content-Type": "application/json"}
     
     prompt = f"""你現在是一位精通香港馬會波經的頂級足球分析師。
@@ -105,7 +105,7 @@ def generate_report_with_gemini(match_info):
 
 ⚠️ 【極度重要警告】：
 你必須【絕對忠於】上方提供的【真實賽事資料】！
-千萬不要憑空捏造對賽球隊，也不要拿歷史經典戰役（如2022世界盃）當作今日賽事。我給你什麼球隊，你就只能分析什麼！
+千萬不要憑空捏造對賽球隊，也不要拿歷史經典戰役當作今日賽事。我給你什麼球隊，你就只能分析什麼！
 如果球隊名是英文，請在分析時自動將其翻譯為香港球迷最熟悉的中文譯名（例如：Brazil 譯成 巴西，Japan 譯成 日本）。
 
 ⚠️ 嚴格核心要求：
@@ -129,3 +129,44 @@ def generate_report_with_gemini(match_info):
             "temperature": 0.2
         }
     }
+
+    try:
+        # 🛠️ 將 params=query_params 塞入去傳送
+        response = requests.post(url, headers=headers, params=query_params, json=payload, timeout=30)
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            print(f"❌ Gemini API 錯誤：{response.text}")
+    except Exception as e:
+        print(f"❌ 呼叫 Gemini 發生錯誤：{e}")
+    return None
+
+# =====================================================================
+# 4. 外賣仔出 Post
+# =====================================================================
+def send_to_telegram(text):
+    if not text:
+        return
+    if not BOT_TOKEN or not CHANNEL_ID:
+        print("❌ 錯誤：找不到 BOT_TOKEN 或 CHANNEL_ID，停止發送。")
+        return
+        
+    print("🚀 正在將真實賽事 AI 預測發送到 Telegram...")
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"}
+    res = requests.post(url, json=payload)
+    if res.status_code == 200:
+        print("🎉【真實賽事全自動化完成！】預測已成功出 Post！")
+    else:
+        print(f"❌ Telegram 發送失敗：{res.text}")
+
+# =====================================================================
+# 5. 主程式執行
+# =====================================================================
+if __name__ == "__main__":
+    data = get_international_odds()
+    if data:
+        report = generate_report_with_gemini(data)
+        send_to_telegram(report)
+    else:
+        print("⏸️ 今日雷達找不到真實賽事。為保證準確，今日提早收工不出 Post。")
