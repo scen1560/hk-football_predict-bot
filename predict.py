@@ -3,30 +3,30 @@ import json
 import os
 
 # =====================================================================
-# 1. 自動讀取 GitHub Secrets 保險箱密鑰
+# 1. 讀取保險箱密鑰
 # =====================================================================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 ODDS_API_KEY = os.environ.get("ODDS_API_KEY")
-CHANNEL_ID = os.environ.get("CHANNEL_ID")
+CHANNEL_ID = "@my_ball_predict_3034"
 
 # =====================================================================
-# 2. 智能雷達：只抓取真實賽事，無波寧願罷工
+# 2. 智能雷達：只抓取真實賽事
 # =====================================================================
 def get_international_odds():
     print("🔄 正在啟動智能雷達，搜尋今日真實賽事...")
     
     if not ODDS_API_KEY:
-        print("❌ 錯誤：找不到 ODDS_API_KEY！請檢查 GitHub 保險箱設定。")
+        print("❌ 錯誤：找不到 ODDS_API_KEY！請檢查 GitHub Secrets。")
         return None
 
     # 📡 聯賽搜尋名單
     SPORTS_TO_TRY = [
-        'soccer_fifa_world_cup',       # 世界盃
-        'soccer_conmebol_copa_america',# 美洲盃
-        'soccer_usa_mls',              # 美職聯
-        'soccer_japan_j_league',       # 日職聯
-        'soccer_epl'                   # 英超
+        'soccer_fifa_world_cup',
+        'soccer_conmebol_copa_america',
+        'soccer_usa_mls',
+        'soccer_japan_j_league',
+        'soccer_epl'
     ]
     
     for sport in SPORTS_TO_TRY:
@@ -76,7 +76,7 @@ def get_international_odds():
     return None
 
 # =====================================================================
-# 3. 呼叫 最新 Gemini 3.5 Flash 大腦 (全新超短固定網址版，100% 杜絕折行錯誤)
+# 3. 呼叫 最新 Gemini 3.5 Flash 大腦
 # =====================================================================
 def generate_report_with_gemini(match_info):
     if not match_info:
@@ -88,11 +88,7 @@ def generate_report_with_gemini(match_info):
         print("❌ 錯誤：找不到 GEMINI_API_KEY！")
         return None
 
-    # 🛠️ 絕招：網址保持絕對固定同超短，完全唔放變數入去，咁就絕對唔會斷行！
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent"
-    
-    # 🔒 將金鑰改放在 params 參數入面傳送，安全又乾淨
-    query_params = {"key": GEMINI_API_KEY}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     
     prompt = f"""你現在是一位精通香港馬會波經的頂級足球分析師。
@@ -106,12 +102,12 @@ def generate_report_with_gemini(match_info):
 ⚠️ 【極度重要警告】：
 你必須【絕對忠於】上方提供的【真實賽事資料】！
 千萬不要憑空捏造對賽球隊，也不要拿歷史經典戰役當作今日賽事。我給你什麼球隊，你就只能分析什麼！
-如果球隊名是英文，請在分析時自動將其翻譯為香港球迷最熟悉的中文譯名（例如：Brazil 譯成 巴西，Japan 譯成 日本）。
+如果球隊名是英文，請自動翻譯為香港球迷熟悉的中文譯名。
 
 ⚠️ 嚴格核心要求：
-1. 完全忽略多年前的歷史往績，將分析重心放在「球隊最新陣容磨合度」及「即時戰意/進攻意慾」。
-2. 必須嚴格使用地道【香港足球術語】（波膽、大細球、受讓、讓球、上/下盤、派彩快、走印、針、半全場、熱門、爆冷）。
-3. 必須嚴格按照以下「8大板塊」的順序輸出，每板塊加上清晰的 Emoji 標題，文字精煉吸睛，適合 Telegram 閱讀：
+1. 忽略歷史往績，重心放在「球隊最新陣容磨合度」及「進攻意慾」。
+2. 必須嚴格使用地道【香港足球術語】（波膽、大細球、受讓、讓球、上/下盤、派彩快、走印、針、半全場）。
+3. 必須嚴格按照以下「8大板塊」的順序輸出，每板塊加上 Emoji 標題，文字精煉：
 
 1. 預計首發陣容及理由（結合新人和傷停）
 2. 近期狀態與戰術對決
@@ -120,19 +116,16 @@ def generate_report_with_gemini(match_info):
 5. 風險及冷門可能性
 6. 全體預測
 7. 預測比分（波膽）
-8. 最終總結（加入溫馨提示：若半場形勢有暗湧，用家可自行決定使用馬會「派彩快」提早走印鎖定利潤）
+8. 最終總結（加入溫馨提示：若半場形勢有暗湧，可使用「派彩快」提早走印鎖定利潤）
 """
 
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.2
-        }
+        "generationConfig": {"temperature": 0.2} 
     }
 
     try:
-        # 🛠️ 將 params=query_params 塞入去傳送
-        response = requests.post(url, headers=headers, params=query_params, json=payload, timeout=30)
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
@@ -147,10 +140,6 @@ def generate_report_with_gemini(match_info):
 def send_to_telegram(text):
     if not text:
         return
-    if not BOT_TOKEN or not CHANNEL_ID:
-        print("❌ 錯誤：找不到 BOT_TOKEN 或 CHANNEL_ID，停止發送。")
-        return
-        
     print("🚀 正在將真實賽事 AI 預測發送到 Telegram...")
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"}
